@@ -1,10 +1,16 @@
-CC = gcc
-CFLAGS = -Wall
+CC      = gcc
+CFLAGS  = -Wall -Werror
+SOURCES = main.c builtins.c
+OBJECTS = $(SOURCES:.c=.o)
+EXEC    = minishell
 
-all: minishell
+all: $(EXEC)
 
-minishell: myShell.c
-	$(CC) $(CFLAGS) myShell.c -o minishell
+$(EXEC): $(OBJECTS)
+	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f minishell
+	rm -f $(OBJECTS) $(EXEC)
