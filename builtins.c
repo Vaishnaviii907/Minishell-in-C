@@ -1,10 +1,10 @@
-// builtins.c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+
+#define MAX_PATH 1024
 
 /* Return 1 if cmd is one of our built‑ins; 0 otherwise */
 int is_builtin(const char *cmd) {
@@ -16,9 +16,25 @@ int is_builtin(const char *cmd) {
 
 /* cd command */
 static void handle_cd(char **args) {
+    char cwd[MAX_PATH];
     const char *dir = args[1] ? args[1] : getenv("HOME");
-    if (chdir(dir) != 0) {
-        perror("minishell");
+
+    if (strcmp(dir, "-") == 0) {
+        // "cd -" to go back to the previous directory
+        if (getenv("OLDPWD") != NULL) {
+            chdir(getenv("OLDPWD"));
+            printf("%s\n", getenv("OLDPWD"));
+        } else {
+            fprintf(stderr, "minishell: OLDPWD not set\n");
+        }
+    } else {
+        // Save the current directory as OLDPWD before changing to the new directory
+        if (getcwd(cwd, sizeof(cwd)) != NULL) {
+            setenv("OLDPWD", cwd, 1);  // Update OLDPWD environment variable
+        }
+        if (chdir(dir) != 0) {
+            perror("minishell");
+        }
     }
 }
 

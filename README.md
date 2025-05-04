@@ -11,3 +11,8 @@ A simple Unix shell written in C.
 Compile the code:
 ```bash
 gcc myShell.c -o minishell
+ 
+ ## for readline
+ sudo apt update
+sudo apt install libreadline-dev
+ 

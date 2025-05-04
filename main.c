@@ -1,37 +1,54 @@
-// main.c
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <ctype.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <limits.h>
 
 #define MAX_LINE 1024
 
 /* Built‑in command interface */
-int  is_builtin(const char *cmd);
+int is_builtin(const char *cmd);
 void handle_builtin(char **args);
 
 /* Read one line of input */
 char *get_input(void) {
-    char *buf = malloc(MAX_LINE);
-    if (!buf) return NULL;
-    printf("minishell> ");
-    if (!fgets(buf, MAX_LINE, stdin)) {
-        free(buf);
-        return NULL;    // EOF (Ctrl+D)
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        perror("minishell");
+        return NULL;
     }
-    buf[strcspn(buf, "\n")] = '\0';  // strip newline
+
+    // ANSI escape codes for colors
+    const char *color_reset = "\033[0m";      // Reset to default color
+    const char *color_blue = "\033[34m";      // Blue for the directory
+    const char *color_green = "\033[32m";     // Green for the prompt symbol
+    
+    // Format the prompt with the full directory path and colors
+    char *prompt = malloc(strlen(cwd) + 30);  // Extra space for color codes and prompt symbol
+    if (!prompt) return NULL;
+
+    snprintf(prompt, strlen(cwd) + 30, "%s%s %s> %s", color_blue, cwd, color_green, color_reset);
+
+    char *buf = readline(prompt);  // Using the custom colored prompt
+    free(prompt);  // Free the allocated memory for the prompt
+
+    if (!buf) return NULL;  // EOF (Ctrl+D)
+    if (strlen(buf) > 0) {
+        add_history(buf);  // Add the command to history
+    }
     return buf;
 }
 
 /* Split input into tokens, honoring quotes and backslashes */
 char **parse_input(char *input) {
-    int   bufsize = 64, pos = 0;
+    int bufsize = 64, pos = 0;
     char **tokens = malloc(bufsize * sizeof(char*));
     char *start, *tok;
-    
+
     if (!tokens) return NULL;
     while (*input) {
         /* Skip whitespace */
@@ -100,6 +117,9 @@ int main(void) {
     char *input;
     char **args;
 
+    // Load history from file (optional)
+    using_history();
+
     while (1) {
         input = get_input();
         if (!input) break;              // EOF
@@ -117,12 +137,15 @@ int main(void) {
             }
         }
 
-        /* free each token */
+        /* Free each token */
         for (int i = 0; args[i]; i++)
             free(args[i]);
         free(args);
         free(input);
     }
+
+    // Save history when exiting
+    write_history("history.txt");
     printf("\n");
     return 0;
 }
