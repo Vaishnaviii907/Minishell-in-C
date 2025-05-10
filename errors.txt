@@ -1,3 +1,0 @@
-There is an error in line 3.
-No errors in this line.
-Here we have another error in line 5.
