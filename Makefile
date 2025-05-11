@@ -1,16 +1,32 @@
-CC      = gcc
-CFLAGS  = -Wall -Werror
-SOURCES = main.c builtins.c
-OBJECTS = $(SOURCES:.c=.o)
-EXEC    = minishell
+# Compiler and flags
+CC = gcc
+CFLAGS = -Wall -Werror -g
+LDFLAGS = -lreadline -lncurses
 
-all: $(EXEC)
+# Sources and object files
+SRCS = main.c builtins.c parser.c executor.c
+OBJS = $(SRCS:.c=.o)
 
-$(EXEC): $(OBJECTS)
-	$(CC) $(CFLAGS) -o $@ $(OBJECTS)
+# Output binary
+TARGET = minishell
 
+# Default target (build the project)
+all: $(TARGET)
+
+# Rule to create the target executable
+$(TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $(TARGET) $(LDFLAGS)
+
+# Rule to compile .c files into .o files
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# Clean up the build (remove object files and the executable)
 clean:
-	rm -f $(OBJECTS) $(EXEC)
+	rm -f $(OBJS) $(TARGET)
+
+# Rebuild the project (clean and build)
+rebuild: clean all
+
+# Phony targets (these aren't files)
+.PHONY: all clean rebuild

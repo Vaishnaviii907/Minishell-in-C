@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+#include <ctype.h>
 
 #define MAX_PATH 1024
 
@@ -21,11 +22,16 @@ static void handle_cd(char **args) {
 
     if (strcmp(dir, "-") == 0) {
         // "cd -" to go back to the previous directory
-        if (getenv("OLDPWD") != NULL) {
-            chdir(getenv("OLDPWD"));
-            printf("%s\n", getenv("OLDPWD"));
+        const char *oldpwd = getenv("OLDPWD");
+        if (oldpwd != NULL) {
+            if (chdir(oldpwd) == 0) {
+                printf("%s\n", oldpwd);
+            } else {
+                perror("minishell");
+                fprintf(stderr, "minishell: cd: %s: No such file or directory\n", oldpwd);
+            }
         } else {
-            fprintf(stderr, "minishell: OLDPWD not set\n");
+            fprintf(stderr, "minishell: cd: OLDPWD not set\n");
         }
     } else {
         // Save the current directory as OLDPWD before changing to the new directory
@@ -34,6 +40,7 @@ static void handle_cd(char **args) {
         }
         if (chdir(dir) != 0) {
             perror("minishell");
+            fprintf(stderr, "minishell: cd: %s: No such file or directory\n", dir);
         }
     }
 }
@@ -46,27 +53,46 @@ static void handle_echo(char **args) {
         newline = 0;
         i = 2;
     }
+    if (args[i] == NULL) {
+        // Handle empty echo case (no arguments provided)
+        printf("\n");
+        return;
+    }
     for (; args[i]; i++) {
         printf("%s", args[i]);
-        if (args[i+1]) printf(" ");
+        if (args[i + 1]) printf(" ");
     }
-    if (newline) printf("\n");
+    if (newline) {
+        printf("\n");
+    } else {
+        // If -n is passed and no newline is printed
+        
+    }
 }
 
 /* pwd command */
 static void handle_pwd(void) {
     char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd))) {
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
         printf("%s\n", cwd);
     } else {
         perror("minishell");
+        fprintf(stderr, "minishell: pwd: failed to get current directory\n");
     }
 }
 
 /* exit command */
 static void handle_exit(char **args) {
     int status = 0;
-    if (args[1]) status = atoi(args[1]);
+    if (args[1]) {
+        // Validate the exit status (check if it's a valid integer)
+        char *endptr;
+        status = strtol(args[1], &endptr, 10);
+        if (*endptr != '\0') {
+            fprintf(stderr, "minishell: exit: %s: numeric argument required\n", args[1]);
+            return;
+        }
+    }
     exit(status);
 }
 
@@ -80,5 +106,7 @@ void handle_builtin(char **args) {
         handle_pwd();
     } else if (strcmp(args[0], "exit") == 0) {
         handle_exit(args);
+    } else {
+        fprintf(stderr, "minishell: %s: command not found\n", args[0]);
     }
 }

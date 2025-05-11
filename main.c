@@ -1,4 +1,3 @@
-#main.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +22,7 @@ void handle_builtin(char **args);
 char *get_input(void) {
     char cwd[PATH_MAX];
     if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        perror("minishell");
+        perror("Error getting current working directory");
         return NULL;
     }
 
@@ -32,13 +31,20 @@ char *get_input(void) {
     const char *color_green = "\033[32m";
 
     char *prompt = malloc(strlen(cwd) + 30);
-    if (!prompt) return NULL;
+    if (!prompt) {
+        perror("Error allocating memory for prompt");
+        return NULL;
+    }
 
     snprintf(prompt, strlen(cwd) + 30, "%s%s %s> %s", color_blue, cwd, color_green, color_reset);
     char *buf = readline(prompt);
     free(prompt);
 
-    if (!buf) return NULL;
+    if (!buf) {
+        perror("Error reading input");
+        return NULL;
+    }
+
     if (strlen(buf) > 0) {
         add_history(buf);  // Add command to history
     }
@@ -51,7 +57,10 @@ char **parse_input(char *input) {
     char **tokens = malloc(bufsize * sizeof(char*));
     char *start, *tok;
 
-    if (!tokens) return NULL;
+    if (!tokens) {
+        perror("Error allocating memory for tokens");
+        return NULL;
+    }
 
     while (*input) {
         while (*input && isspace((unsigned char)*input)) input++;
@@ -75,6 +84,10 @@ char **parse_input(char *input) {
             }
             int len = input - start;
             tok = malloc(len + 1);
+            if (!tok) {
+                perror("Error allocating memory for token");
+                return NULL;
+            }
             char *dst = tok, *src = start;
             while (src < input) {
                 if (*src == '\\' && (src + 1) < input) {
@@ -91,6 +104,10 @@ char **parse_input(char *input) {
         if (pos >= bufsize) {
             bufsize *= 2;
             tokens = realloc(tokens, bufsize * sizeof(char*));
+            if (!tokens) {
+                perror("Error reallocating memory for tokens");
+                return NULL;
+            }
         }
     }
     tokens[pos] = NULL;
@@ -100,14 +117,16 @@ char **parse_input(char *input) {
 /* External command launcher */
 void launch_external(char **args) {
     pid_t pid = fork();
+    if (pid == -1) {
+        perror("Error forking process");
+        return;
+    }
     if (pid == 0) {
         execvp(args[0], args);
-        perror("minishell");
+        perror("Error executing command");
         exit(EXIT_FAILURE);
-    } else if (pid > 0) {
-        waitpid(pid, NULL, 0);
     } else {
-        perror("minishell");
+        waitpid(pid, NULL, 0);
     }
 }
 
@@ -139,10 +158,14 @@ void handle_redirection(char *input) {
     if (input_file) {
         in_fd = open(input_file, O_RDONLY);
         if (in_fd == -1) {
-            perror("minishell");
+            perror("Error opening input file for redirection");
             return;
         }
-        dup2(in_fd, STDIN_FILENO);
+        if (dup2(in_fd, STDIN_FILENO) == -1) {
+            perror("Error redirecting input");
+            close(in_fd);
+            return;
+        }
         close(in_fd);
     }
 
@@ -150,15 +173,19 @@ void handle_redirection(char *input) {
         int flags = O_WRONLY | O_CREAT | (append ? O_APPEND : O_TRUNC);
         out_fd = open(output_file, flags, 0644);
         if (out_fd == -1) {
-            perror("minishell");
+            perror("Error opening output file for redirection");
             return;
         }
-        dup2(out_fd, STDOUT_FILENO);
+        if (dup2(out_fd, STDOUT_FILENO) == -1) {
+            perror("Error redirecting output");
+            close(out_fd);
+            return;
+        }
         close(out_fd);
     }
 
     execvp(args[0], args);
-    perror("minishell");
+    perror("Error executing command after redirection");
 }
 
 /* Main shell loop */
@@ -166,10 +193,13 @@ int main(void) {
     char *input;
     char **args;
 
-
     while (1) {
         input = get_input();
-        if (!input) break;
+        if (!input) {
+            fprintf(stderr, "Error getting input, exiting.\n");
+            break;
+        }
+
         if (strlen(input) == 0) {
             free(input);
             continue;
@@ -183,17 +213,20 @@ int main(void) {
                 execute_pipeline(cmds, num_cmds);
                 free_commands(cmds, num_cmds);
             } else {
-                fprintf(stderr, "Failed to parse pipeline\n");
+                fprintf(stderr, "Error parsing pipeline.\n");
             }
         } else if (strchr(input, '>') || strchr(input, '<')) {
             pid_t pid = fork();
+            if (pid == -1) {
+                perror("Error forking process for redirection");
+                free(input);
+                continue;
+            }
             if (pid == 0) {
                 handle_redirection(input);
                 exit(EXIT_FAILURE);
-            } else if (pid > 0) {
-                waitpid(pid, NULL, 0);
             } else {
-                perror("fork");
+                waitpid(pid, NULL, 0);
             }
         } else {
             // Process normal input (no redirection or piping)
@@ -213,6 +246,7 @@ int main(void) {
 
         free(input);
     }
-    printf("\n");
+
+    printf("\nExiting shell...\n");
     return 0;
 }

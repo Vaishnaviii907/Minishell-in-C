@@ -64,7 +64,7 @@ void execute_pipeline(Command *cmds, int num_cmds) {
             // Execute the command
             execvp(cmds[i].argv[0], cmds[i].argv);
             perror("execvp");
-            exit(1);
+            exit(1);  // Ensure child process exits if execvp fails
         } else if (pid < 0) {
             perror("fork");
             return;
@@ -74,13 +74,13 @@ void execute_pipeline(Command *cmds, int num_cmds) {
         if (prev_fd != -1)
             close(prev_fd);
         if (i < num_cmds - 1) {
-            close(pipe_fd[1]);      // close write end in parent
-            prev_fd = pipe_fd[0];   // next child reads from this
+            close(pipe_fd[1]);      // Close write end in parent
+            prev_fd = pipe_fd[0];   // Next child reads from this
         }
     }
 
     // Wait for all children to finish
     for (i = 0; i < num_cmds; i++) {
-        waitpid(-1, NULL, 0);  // Wait for each child process individually
+        wait(NULL);  // Wait for any child process
     }
 }
