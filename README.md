@@ -1,5 +1,9 @@
-# Minishell
+<
+ ## for readline
+sudo apt update
+sudo apt install libreadline-dev
 
+# Minishell
 A simple Unix shell written in C.
 
 ## Features
@@ -7,12 +11,6 @@ A simple Unix shell written in C.
 - Simple prompt loop
 - Graceful exit with `exit`
 
-## Usage
-Compile the code:
-```bash
-gcc myShell.c -o minishell
- 
- ## for readline
- sudo apt update
-sudo apt install libreadline-dev
- 
+## to compile the shell
+gcc -Wall -Werror main.c builtins.c parser.c executor.c  -o minishell -lreadline -lncurses
+
