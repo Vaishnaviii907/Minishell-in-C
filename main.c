@@ -1,3 +1,4 @@
+#include "command.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,16 +9,24 @@
 #include <limits.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-
 #include "parser.h"
 #include "executor.h"
-
 #define MAX_LINE 1024
+/* List of known commands for suggestion */
+const char *known_commands[] = {
+    "ls", "cd", "cat", "echo", "pwd", "mkdir", "rm", "rmdir",
+    "cp", "mv", "grep", "touch", "exit", "time", NULL
+};
 
-/* Built-in command interface */
-int is_builtin(const char *cmd);
-void handle_builtin(char **args);
-
+/* Suggest command based on prefix match */
+const char* suggest_command(const char *input) {
+    for (int i = 0; known_commands[i] != NULL; i++) {
+        if (strncmp(known_commands[i], input, 2) == 0) {
+            return known_commands[i];
+        }
+    }
+    return NULL;
+}
 /* Colored prompt with current working directory */
 char *get_input(void) {
     char cwd[PATH_MAX];
@@ -61,7 +70,6 @@ char **parse_input(char *input) {
         perror("Error allocating memory for tokens");
         return NULL;
     }
-
     while (*input) {
         while (*input && isspace((unsigned char)*input)) input++;
         if (!*input) break;
@@ -114,21 +122,32 @@ char **parse_input(char *input) {
     return tokens;
 }
 
-/* External command launcher */
+/* External command launcher with suggestion */
 void launch_external(char **args) {
     pid_t pid = fork();
     if (pid == -1) {
         perror("Error forking process");
         return;
     }
+
     if (pid == 0) {
+        // Try to execute the command
         execvp(args[0], args);
-        perror("Error executing command");
+
+        // If execvp fails, provide suggestions
+        const char *suggestion = suggest_command(args[0]);
+        fprintf(stderr, "\033[1;31mCommand not found:\033[0m %s\n", args[0]);
+        if (suggestion) {
+            fprintf(stderr, "🔍 Did you mean: \033[1;32m%s\033[0m?\n", suggestion);
+        } else {
+            fprintf(stderr, "❌ No similar command found.\n");
+        }
         exit(EXIT_FAILURE);
     } else {
         waitpid(pid, NULL, 0);
     }
 }
+
 
 /* Redirection handler */
 void handle_redirection(char *input) {
@@ -229,7 +248,6 @@ int main(void) {
                 waitpid(pid, NULL, 0);
             }
         } else {
-            // Process normal input (no redirection or piping)
             args = parse_input(input);
             if (args[0]) {
                 if (is_builtin(args[0])) {
@@ -239,8 +257,7 @@ int main(void) {
                 }
             }
 
-            for (int i = 0; args[i]; i++)
-                free(args[i]);
+            for (int i = 0; args[i]; i++) free(args[i]);
             free(args);
         }
 
@@ -250,3 +267,4 @@ int main(void) {
     printf("\nExiting shell...\n");
     return 0;
 }
+
