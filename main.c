@@ -13,6 +13,8 @@
 #include "parser.h"
 #include "executor.h"
 #include "builtins.h"
+#include "custom_commands.h"
+
 
 #define MAX_LINE 1024
 
@@ -232,10 +234,13 @@ int main(void) {
             args = parse_input(input);
             if (args[0]) {
                 if (is_builtin(args[0])) {
-                    handle_builtin(args);
-                } else {
-                    launch_external(args);
-                }
+    handle_builtin(args);
+} else if (is_custom_command(args[0])) {
+    handle_custom_command(args);  // <-- Call your custom command dispatcher
+} else {
+    launch_external(args);
+}
+
             }
             for (int i = 0; args[i]; i++) free(args[i]);
             free(args);
