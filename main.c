@@ -1,4 +1,4 @@
-#include "command.h"
+ 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,24 +9,13 @@
 #include <limits.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include "suggest.h"  
 #include "parser.h"
 #include "executor.h"
-#define MAX_LINE 1024
-/* List of known commands for suggestion */
-const char *known_commands[] = {
-    "ls", "cd", "cat", "echo", "pwd", "mkdir", "rm", "rmdir",
-    "cp", "mv", "grep", "touch", "exit", "time", NULL
-};
+#include "builtins.h"
 
-/* Suggest command based on prefix match */
-const char* suggest_command(const char *input) {
-    for (int i = 0; known_commands[i] != NULL; i++) {
-        if (strncmp(known_commands[i], input, 2) == 0) {
-            return known_commands[i];
-        }
-    }
-    return NULL;
-}
+#define MAX_LINE 1024
+
 /* Colored prompt with current working directory */
 char *get_input(void) {
     char cwd[PATH_MAX];
@@ -55,7 +44,7 @@ char *get_input(void) {
     }
 
     if (strlen(buf) > 0) {
-        add_history(buf);  // Add command to history
+        add_history(buf);
     }
     return buf;
 }
@@ -70,6 +59,7 @@ char **parse_input(char *input) {
         perror("Error allocating memory for tokens");
         return NULL;
     }
+
     while (*input) {
         while (*input && isspace((unsigned char)*input)) input++;
         if (!*input) break;
@@ -131,23 +121,14 @@ void launch_external(char **args) {
     }
 
     if (pid == 0) {
-        // Try to execute the command
         execvp(args[0], args);
-
-        // If execvp fails, provide suggestions
-        const char *suggestion = suggest_command(args[0]);
         fprintf(stderr, "\033[1;31mCommand not found:\033[0m %s\n", args[0]);
-        if (suggestion) {
-            fprintf(stderr, "🔍 Did you mean: \033[1;32m%s\033[0m?\n", suggestion);
-        } else {
-            fprintf(stderr, "❌ No similar command found.\n");
-        }
+        suggest_commands(args[0]);  // call external suggestion from command.c
         exit(EXIT_FAILURE);
     } else {
         waitpid(pid, NULL, 0);
     }
 }
-
 
 /* Redirection handler */
 void handle_redirection(char *input) {
@@ -256,7 +237,6 @@ int main(void) {
                     launch_external(args);
                 }
             }
-
             for (int i = 0; args[i]; i++) free(args[i]);
             free(args);
         }
@@ -267,4 +247,3 @@ int main(void) {
     printf("\nExiting shell...\n");
     return 0;
 }
-
