@@ -5,7 +5,7 @@
 #include <sys/utsname.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "custom_commands.h"
+#include "custom.h"
 
 void greet_command() {
     printf("👋 Hello! Welcome to MiniShell. Type 'help' to see available commands.\n");

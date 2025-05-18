@@ -13,7 +13,7 @@
 #include "parser.h"
 #include "executor.h"
 #include "builtins.h"
-#include "custom_commands.h"
+#include "custom.h"
 
 
 #define MAX_LINE 1024

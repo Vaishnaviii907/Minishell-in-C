@@ -4,7 +4,7 @@ CFLAGS = -Wall -Werror -g -MMD -MP
 LDFLAGS = -lreadline -lncurses
 
 # Sources and object files
-SRCS = main.c builtins.c parser.c executor.c suggest.c
+SRCS = main.c builtins.c parser.c executor.c suggest.c custom.c
 OBJS = $(SRCS:.c=.o)
 DEPS = $(OBJS:.o=.d)
 
