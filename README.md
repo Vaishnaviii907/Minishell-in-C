@@ -33,7 +33,7 @@ You can compile the project in two ways:
 ### 🔸 Using GCC directly:
 
 ```bash
-gcc -Wall -Werror main.c builtins.c parser.c executor.c suggest.c  -o minishell -lreadline -lncurses
+gcc -Wall -Werror main.c builtins.c parser.c executor.c suggest.c custom.c  -o minishell -lreadline -lncurses
 ```
 
 ### 🔸 Using the Makefile:
