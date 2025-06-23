@@ -10,6 +10,8 @@ typedef struct {
 
 
 void execute_pipeline(Command *cmds, int num_cmds);
+void handle_redirection(char *input);
+void launch_external(char **args);
 
 #endif
 

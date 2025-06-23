@@ -143,6 +143,67 @@ int parse_pipeline(const char *input, Command **cmds_out, int *num_cmds_out) {
     *num_cmds_out = num_cmds;
     return 0;
 }
+char **parse_input(char *input) {
+    int bufsize = 64, pos = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+    char *start, *tok;
+
+    if (!tokens) {
+        perror("Error allocating memory for tokens");
+        return NULL;
+    }
+
+    while (*input) {
+        while (*input && isspace((unsigned char)*input)) input++;
+        if (!*input) break;
+
+        if (*input == '"' || *input == '\'') {
+            char quote = *input++;
+            start = input;
+            while (*input && *input != quote) {
+                if (*input == '\\' && *(input + 1)) input += 2;
+                else input++;
+            }
+            int len = input - start;
+            tok = strndup(start, len);
+            if (*input == quote) input++;
+        } else {
+            start = input;
+            while (*input && !isspace((unsigned char)*input)) {
+                if (*input == '\\' && *(input + 1)) input += 2;
+                else input++;
+            }
+            int len = input - start;
+            tok = malloc(len + 1);
+            if (!tok) {
+                perror("Error allocating memory for token");
+                return NULL;
+            }
+            char *dst = tok, *src = start;
+            while (src < input) {
+                if (*src == '\\' && (src + 1) < input) {
+                    *dst++ = *(src + 1);
+                    src += 2;
+                } else {
+                    *dst++ = *src++;
+                }
+            }
+            *dst = '\0';
+        }
+
+        tokens[pos++] = tok;
+        if (pos >= bufsize) {
+            bufsize *= 2;
+            tokens = realloc(tokens, bufsize * sizeof(char*));
+            if (!tokens) {
+                perror("Error reallocating memory for tokens");
+                return NULL;
+            }
+        }
+    }
+    tokens[pos] = NULL;
+    return tokens;
+}
 
 // Free command list
 void free_commands(Command *cmds, int num_cmds) {

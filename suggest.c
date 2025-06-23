@@ -17,6 +17,10 @@ typedef struct {
     int score;
 } Suggestion;
 
+static const char *custom_cmds[] = {
+    "greet", "clr", "calculator", "quit", "sysinfo", "findfile", "createfile", "help", NULL
+};
+
 /* Convert string to lowercase */
 static void to_lower(char *dst, const char *src) {
     while (*src) {
@@ -62,6 +66,24 @@ void suggest_commands(const char *input) {
     char input_lower[MAX_CMD_LEN];
     to_lower(input_lower, input);
 
+    // --- Add custom commands to suggestions ---
+    for (int i = 0; custom_cmds[i]; i++) {
+        char cmd_lower[MAX_CMD_LEN];
+        to_lower(cmd_lower, custom_cmds[i]);
+        int dist = levenshtein_distance(input_lower, cmd_lower);
+        for (int j = 0; j < MAX_SUGGESTIONS; j++) {
+            if (dist < suggestions[j].score) {
+                for (int k = MAX_SUGGESTIONS - 1; k > j; k--) {
+                    suggestions[k] = suggestions[k - 1];
+                }
+                suggestions[j].cmd = custom_cmds[i]; // No strdup needed for static strings
+                suggestions[j].score = dist;
+                break;
+            }
+        }
+    }
+    // --- End custom commands ---
+
     char *dir = strtok(path_copy, ":");
     while (dir) {
         DIR *dp = opendir(dir);
@@ -90,16 +112,28 @@ void suggest_commands(const char *input) {
         dir = strtok(NULL, ":");
     }
 
-    if (suggestions[0].score <= 3) {
+    if (!getenv("MINISHELL_GUI")) {
         printf("\033[33mDid you mean:\n");
-        for (int i = 0; i < MAX_SUGGESTIONS && suggestions[i].cmd; i++) {
-            printf("  • %s\n", suggestions[i].cmd);
-        }
+    } else {
+        printf("Did you mean:\n");
+    }
+    for (int i = 0; i < MAX_SUGGESTIONS && suggestions[i].cmd; i++) {
+        printf("  • %s\n", suggestions[i].cmd);
+    }
+    if (!getenv("MINISHELL_GUI")) {
         printf("\033[0m");
     }
 
     for (int i = 0; i < MAX_SUGGESTIONS; i++) {
-        if (suggestions[i].cmd)
+        // Only free if it was strdup'd (system commands)
+        int is_custom = 0;
+        for (int j = 0; custom_cmds[j]; j++) {
+            if (suggestions[i].cmd == custom_cmds[j]) {
+                is_custom = 1;
+                break;
+            }
+        }
+        if (suggestions[i].cmd && !is_custom)
             free((char *)suggestions[i].cmd);
     }
 

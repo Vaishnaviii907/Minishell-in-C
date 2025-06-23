@@ -8,15 +8,24 @@
 #include "custom.h"
 
 void greet_command() {
-    printf("👋 Hello! Welcome to MiniShell. Type 'help' to see available commands.\n");
+    if (getenv("MINISHELL_GUI")) {
+        printf("Hello! Welcome to MiniShell. Type 'help' to see available commands.\n");
+    } else {
+        printf("\xF0\x9F\x91\x8B Hello! Welcome to MiniShell. Type 'help' to see available commands.\n");
+    }
 }
 
 void clr_command() {
-    // ANSI escape code to clear screen
-    printf("\033[H\033[J");
+    if (!getenv("MINISHELL_GUI")) {
+        printf("\033[H\033[J");
+    }
 }
 
 void calculator_command() {
+    if (getenv("MINISHELL_GUI")) {
+        printf("The calculator command is not supported in GUI mode.\n");
+        return;
+    }
     char op;
     double a, b;
 
